@@ -15,6 +15,7 @@ from functions.general_functions import *
 from gtfs_classes.FareRules import *
 from gtfs_classes.Trips import *
 from gtfs_classes.StopTimes import *
+from gtfs_classes.Shapes import *
 
 # Fare Files
 df_fares = pd.DataFrame.from_csv('inputs/fares/fare_id.csv', index_col=False)
@@ -31,6 +32,7 @@ def main():
     # Lists to hold stop_times and trips records
     stop_times_list = []
     trips_list = []
+    shapes_list = []
     fare_rules = FareRules()
 
     # Generates a unique ID 
@@ -46,9 +48,17 @@ def main():
     for my_dict in transit_network_tod.itervalues():
         # Get the am or md transit network: 
         transit_network = network_dict[my_dict['transit_bank']]
+        transit_network.create_attribute('TRANSIT_LINE', 'shape_id')
+        transit_network.create_attribute('TRANSIT_LINE', 'route_id')
         
         # Schedule each route and create data structure (list of dictionaries) for trips and stop_times. 
         for transit_line in transit_network.transit_lines():
+            transit_line.shape_id = int(transit_line.id) + my_dict['tod_int']
+            transit_line.shape_id = int(transit_line["@rteid"])
+            print transit_line.shape_id
+         
+            shapes_list.extend(get_transit_line_shape(transit_line))
+      
             
             ###### FARES ######
             # Get a list of ordered stops for this route
@@ -70,10 +80,12 @@ def main():
             schedule_route(my_dict['start_time'], my_dict['end_time'], transit_line, id_generator, stop_times_list, trips_list, network_dict)
 
     # Instantiate classes
+    shapes = Shapes(shapes_list)
     stop_times = StopTimes(stop_times_list)
     trips = Trips(trips_list)
     
     # Write out text files
+    shapes.data_frame.to_csv('outputs/shapes.txt', index = False)
     stop_times.data_frame.to_csv('outputs/stop_times.txt', index = False)
     trips.data_frame.to_csv('outputs/trips.txt', index = False)
     fare_rules.data_frame.to_csv('outputs/fare_rules.txt', index = False)

@@ -1,16 +1,19 @@
 import os
 import pandas as pd
 
-class Trips(object):
+#from .Logger import FastTripsLogger
+
+class Shapes(object):
     
     """
-    Trips. 
+    Shapes
     """
-    columns = ['route_id', 'service_id', 'trip_id', 'shape_id'] 
+    columns = ['shape_id', 'shape_pt_lat', 'shape_pt_lon', 'shape_pt_sequence']
+    
     def __init__(self, data):
         """
         Constructor to populate DataFrame from list of dictionaries where each dictionary holds 
-        row data for GTFS stop_times.txt. 
+        row data for GTFS shapes.txt. 
         """
         #: Trips_stop_times DataFrame
         
