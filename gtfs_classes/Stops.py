@@ -1,16 +1,16 @@
 import os
 import pandas as pd
 
-class Trips(object):
+class Stops(object):
     
     """
-    Trips. 
+    Stops. 
     """
-    columns = ['route_id', 'service_id', 'trip_id', 'shape_id'] 
+    columns = ['stop_id', 'stop_name', 'stop_lat', 'stop_lon', 'zone_id'] 
     def __init__(self, data):
         """
         Constructor to populate DataFrame from list of dictionaries where each dictionary holds 
-        row data for GTFS Trips.txt. 
+        row data for GTFS stop.txt. 
         """
         #: Trips_stop_times DataFrame
         

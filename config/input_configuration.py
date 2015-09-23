@@ -3,6 +3,9 @@
 # Default dwell time in decimal minutes
 DWELL_TIME = .25
 
+#Service ID Field 
+SERVICE_ID = 1
+
 # Location of assingment banks
 banks_path = 'R:/SoundCast/releases/TransportationFutures2010/Banks/'
 
@@ -31,3 +34,5 @@ highway_assignment_tod = {5: '5to6', 6: '6to7', 7: '7to8', 8: '8to9', 9: '9to10'
 # not exist (e.g. bus only lane that reverts back to GP during non-peak) for this network. In these cases, get the travel time from the '8to9' highway assignment bank.
 # key = auto_assignment bank that does not contain the link, value = auto_assignment  bank that should be used instead. 
 fall_back_dict = {'5to6' : '6to7', '9to10' : '8to9', '10to14' : '8to9', '15to16' : '14to15'}
+
+route_type_dict = {'r' : 0, 'c' : 2, 'b' : 3, 'p' : 3, 'f' : 4}

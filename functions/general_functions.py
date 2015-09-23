@@ -10,8 +10,11 @@ from gtfs_classes.Trips import *
 from gtfs_classes.StopTimes import *
 from gtfs_classes.FareRules import *
 from gtfs_classes.Shapes import *
+from gtfs_classes.Stops import *
+from gtfs_classes.Routes import *
 from pyproj import Proj, transform
 import random 
+import geocoder
 
 
 def get_emme_stop_sequence(emme_transit_line):
@@ -42,11 +45,20 @@ def get_emme_stop_sequence(emme_transit_line):
 
     return record_list
 
+def configure_transit_line_attributes(transit_line, df_network_atts):
+    '''
+    Add attributes that are not stored in emme to each transit line.  
+    '''
+    row = df_network_atts.loc[(df_network_atts.id == int(transit_line.id))]
+    transit_line.route_id = row['route_id'].iloc[0]
+    transit_line.shape_id = row['shape_id'].iloc[0]
+    transit_line.short_name = row['short_name'].iloc[0]
 
 def reproject_to_wgs84(longitude, latitude, ESPG = "+init=EPSG:2926", conversion = 0.3048006096012192):
-    '''Converts the passed in coordinates from their native projection (default is state plane WA North-EPSG:2926)
-       to wgs84. Returns a two item tuple containing the longitude (x) and latitude (y) in wgs84. Coordinates
-       must be in meters hence the default conversion factor- PSRC's are in state plane feet.  
+    '''
+    Converts the passed in coordinates from their native projection (default is state plane WA North-EPSG:2926)
+    to wgs84. Returns a two item tuple containing the longitude (x) and latitude (y) in wgs84. Coordinates
+    must be in meters hence the default conversion factor- PSRC's are in state plane feet.  
     '''
     # Remember long is x and lat is y!
     prj_wgs = Proj(init='epsg:4326')
@@ -152,6 +164,26 @@ def get_zones_from_stops(list_of_stops, df_stops_zones):
     return zone_list
     
 
+def popualate_stops(network, stops):
+    '''
+    Creates records for stops.txt
+    '''
+    stops_list = []
+    for stop in stops:
+        node = network.node(stop)
+        wgs84tuple = reproject_to_wgs84(node.x, node.y)
+        #geocode = geocoder.google([wgs84tuple[1], wgs84tuple[0]], method="reverse")
+        #try:
+        #    stop_name = geocode.content['results'][1]['address_components'][0]['short_name']
+        #except:
+        #    stop_name = geocode.street_long
+
+        
+        stops_record = [node.id, 'stop', wgs84tuple[1], wgs84tuple[0], 1]
+        stops_list.append(dict(zip(Stops.columns, stops_record)))
+
+    return stops_list
+
 def populate_fare_rule(zone_pairs, df_fare_rules, emme_transit_line, df_fares):
     '''
     Updates dataframe on instance of Fare_Rules with all possible rules for a given route
@@ -160,16 +192,13 @@ def populate_fare_rule(zone_pairs, df_fare_rules, emme_transit_line, df_fares):
     for pair in zone_pairs:
         origin = pair[0]
         destination = pair[1]
-        print emme_transit_line.id
-        print origin, destination
         # .data3 refers to operator
         row = df_fares.loc[(df_fares.operator == emme_transit_line.data3) 
                            & (df_fares.origin_zone == origin) & (df_fares.destination_zone == destination)]
     
         fare_id = row['fare_id'].iloc[0]
         #fare_id = get_fare_id(emme_transit_line.data3, origin, destination)
-        print fare_id
-        df_fare_rules.loc[len(df_fare_rules)] = [fare_id, emme_transit_line.id, origin, destination, 0]
+        df_fare_rules.loc[len(df_fare_rules)] = [fare_id, emme_transit_line.route_id, origin, destination, 0]
 
 def test_fare_rules(route_stops, df_fare_rules, route_id):
     """
@@ -197,6 +226,16 @@ def dec_mins_to_HHMMSS(time_in_decimal_minutes):
     Convertes Decimal minutes to HHMMSS
     """
     return time.strftime("%H:%M:%S", time.gmtime(time_in_decimal_minutes * 60))
+
+def get_route_record(transit_line):
+    '''
+    Creates a transit record for routes.txt
+    '''
+    route_list = []
+    route_record = [transit_line.route_id, transit_line.description, transit_line.short_name, transit_line.short_name, 
+                    route_type_dict[transit_line.mode.id]]
+    route_list.append(dict(zip(Routes.columns, route_record)))
+    return route_list
 
 def get_transit_line_shape(transit_line):
     """
@@ -231,7 +270,7 @@ def schedule_route(start_time, end_time, transit_line, trip_id_generator, stop_t
  
     # Get first stop departure times. Assuming all first trips leave at start time for the moment. Will implment randomized departure times later. 
     random_start_time = get_pseudo_random_departure_time(start_time, transit_line.headway)
-    print random_start_time
+    
     first_stop_departure_times = range(int(random_start_time), end_time, int(transit_line.headway))
 
     for first_departure in first_stop_departure_times:
@@ -241,11 +280,11 @@ def schedule_route(start_time, end_time, transit_line, trip_id_generator, stop_t
        
        # To Do: need a route_id attribute- using transit_line.id for now
        # Using 1 for service_id
-       trips_record = [transit_line.id, 1, trip_id, transit_line.shape_id]
+       trips_record = [transit_line.route_id, SERVICE_ID, trip_id, transit_line.shape_id]
        trips_list.append(dict(zip(Trips.columns, trips_record)))
 
        departure_time = first_departure
-       #print departure_time
+       
        order = 1
        for segment in transit_line.segments():
            last_segment_number = max(enumerate(transit_line.segments()))[1].number
